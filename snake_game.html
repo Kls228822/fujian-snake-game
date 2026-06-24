@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐍 福建山海情 · 双人对战贪吃蛇答题挑战</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #0a1628 0%, #0d2137 30%, #0a2a4a 70%, #062a1a 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+    color: #e0e8f0;
+  }
+
+  /* ========== 顶部标题栏 ========== */
+  .header {
+    text-align: center;
+    padding: 18px 10px 10px;
+    position: relative;
+    z-index: 10;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 900;
+    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #ff6b6b);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rainbow 4s linear infinite;
+    letter-spacing: 3px;
+    text-shadow: 0 0 30px rgba(255,107,107,0.3);
+  }
+  @keyframes rainbow {
+    0%{background-position:0% 50%} 100%{background-position:300% 50%}
+  }
+  .header .subtitle {
+    font-size: 13px;
+    color: #7eb8d0;
+    margin-top: 2px;
+    letter-spacing: 6px;
+  }
+
+  /* ========== 比分栏 ========== */
+  .scoreboard {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 10px 10px 6px;
+    position: relative;
+    z-index: 10;
+  }
+  .score-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 10px 28px;
+    backdrop-filter: blur(10px);
+    transition: all .3s;
+    min-width: 260px;
+    justify-content: center;
+  }
+  .score-card.team-a { border-left: 4px solid #ff4e50; }
+  .score-card.team-b { border-left: 4px solid #4dffb8; }
+  .score-card .team-emoji { font-size: 32px; }
+  .score-card .team-info { text-align: left; }
+  .score-card .team-name { font-size: 14px; font-weight: 700; line-height: 1.3; }
+  .score-card .team-name.a { color: #ff6b6b; }
+  .score-card .team-name.b { color: #4dffb8; }
+  .score-card .team-score {
+    font-size: 36px; font-weight: 900;
+    margin-left: 18px; min-width: 50px; text-align: center;
+  }
+  .score-card .team-score.a { color: #ff6b6b; text-shadow: 0 0 20px rgba(255,75,75,0.5); }
+  .score-card .team-score.b { color: #4dffb8; text-shadow: 0 0 20px rgba(77,255,184,0.5); }
+  .score-card .score-label { font-size: 11px; color: #6a9ec0; }
+
+  /* ========== 主体布局 ========== */
+  .main-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 10px 15px 15px;
+    flex-wrap: wrap;
+  }
+
+  /* ========== 游戏画布 ========== */
+  .game-wrapper {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,100,200,0.25), 0 0 80px rgba(0,60,120,0.15);
+    border: 2px solid rgba(100,180,255,0.15);
+  }
+  #gameCanvas { display: block; background: #0a1e35; }
+
+  /* ========== 题目面板 ========== */
+  .question-panel { width: 340px; display: flex; flex-direction: column; gap: 14px; }
+
+  .question-box {
+    background: rgba(15,35,65,0.85);
+    border: 1px solid rgba(100,180,255,0.15);
+    border-radius: 16px;
+    padding: 18px;
+    backdrop-filter: blur(12px);
+    transition: all .35s;
+    position: relative;
+    overflow: hidden;
+  }
+  .question-box::before {
+    content: ''; position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 16px 16px 0 0;
+  }
+  .question-box.team-a::before { background: linear-gradient(90deg, #ff4e50, #ff9a76); }
+  .question-box.team-b::before { background: linear-gradient(90deg, #00c9a7, #4dffb8); }
+
+  .question-box .q-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .question-box .q-header .q-icon { font-size: 22px; }
+  .question-box .q-header .q-title { font-size: 14px; font-weight: 700; }
+  .question-box .q-header .q-title.a { color: #ff8a8a; }
+  .question-box .q-header .q-title.b { color: #4dffb8; }
+  .question-box .q-header .q-num {
+    margin-left: auto; font-size: 12px; color: #5a8aaa;
+    background: rgba(255,255,255,0.06); padding: 2px 10px; border-radius: 20px;
+  }
+
+  .q-text { font-size: 13.5px; line-height: 1.7; color: #c8dce8; margin-bottom: 12px; min-height: 40px; }
+  .q-text-final { font-size: 15px; line-height: 1.8; color: #4dffb8; margin-bottom: 12px; text-align: center; padding: 20px 0; }
+
+  .q-image-container {
+    width: 100%; margin-bottom: 12px; border-radius: 10px; overflow: hidden;
+    border: 1px solid rgba(100,180,255,0.12); background: rgba(0,0,0,0.2); text-align: center;
+  }
+  .q-image-container img { width: 100%; display: block; }
+  .q-image-caption { font-size: 10px; color: #5a8aaa; padding: 4px 8px; background: rgba(0,0,0,0.2); }
+
+  .q-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .q-opt {
+    padding: 9px 10px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: #b8d0e0; font-size: 13px; cursor: pointer;
+    transition: all .25s; text-align: center; user-select: none;
+    position: relative; overflow: hidden;
+  }
+  .q-opt:hover:not(.disabled) {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.25);
+    transform: translateY(-1px);
+  }
+  .q-opt.correct {
+    background: rgba(46,204,113,0.2) !important;
+    border-color: #2ecc71 !important;
+    color: #2ecc71 !important; font-weight: 700;
+  }
+  .q-opt.wrong {
+    background: rgba(231,76,60,0.2) !important;
+    border-color: #e74c3c !important;
+    color: #e74c3c !important;
+  }
+  .q-opt.disabled { cursor: default; opacity: 0.6; }
+
+  .q-status { text-align: center; font-size: 12px; margin-top: 8px; min-height: 20px; font-weight: 500; }
+  .q-status.waiting { color: #5a8aaa; }
+  .q-status.correct-msg { color: #2ecc71; }
+  .q-status.wrong-msg { color: #e74c3c; }
+  .q-status.final-msg { color: #ffd93d; font-size: 14px; font-weight: 700; }
+
+  /* ========== 底部信息 ========== */
+  .footer-info { text-align: center; padding: 8px; font-size: 11px; color: #3a6080; }
+  .footer-info span { margin: 0 12px; }
+
+  /* ========== 开始/结束遮罩 ========== */
+  .overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(5,15,30,0.92);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100; backdrop-filter: blur(8px); transition: opacity .5s;
+  }
+  .overlay.hidden { opacity: 0; pointer-events: none; }
+  .overlay h2 { font-size: 36px; font-weight: 900; margin-bottom: 8px; }
+  .overlay p { color: #7eb8d0; font-size: 15px; margin-bottom: 24px; max-width: 500px; text-align: center; line-height: 1.7; }
+  .overlay .team-showcase { display: flex; gap: 50px; margin-bottom: 28px; align-items: center; }
+  .overlay .team-showcase .ts-item { text-align: center; }
+  .overlay .team-showcase .ts-icon { font-size: 52px; margin-bottom: 6px; }
+  .overlay .team-showcase .ts-name { font-size: 15px; font-weight: 700; }
+  .overlay .team-showcase .ts-name.a { color: #ff6b6b; }
+  .overlay .team-showcase .ts-name.b { color: #4dffb8; }
+  .overlay .ts-vs {
+    font-size: 22px; font-weight: 900; color: #ffd93d;
+    text-shadow: 0 0 20px rgba(255,217,61,0.4);
+  }
+
+  .btn {
+    padding: 14px 48px; font-size: 17px; font-weight: 700;
+    border: none; border-radius: 14px; cursor: pointer;
+    transition: all .3s; letter-spacing: 2px;
+  }
+  .btn-start {
+    background: linear-gradient(135deg, #ff6b6b, #ffa07a);
+    color: #fff; box-shadow: 0 4px 25px rgba(255,75,75,0.4);
+  }
+  .btn-start:hover { transform: scale(1.05); box-shadow: 0 6px 35px rgba(255,75,75,0.6); }
+  .btn-restart {
+    background: linear-gradient(135deg, #4dffb8, #00c9a7);
+    color: #0a1628; box-shadow: 0 4px 25px rgba(77,255,184,0.4);
+  }
+  .btn-restart:hover { transform: scale(1.05); }
+
+  .result-scores { display: flex; gap: 40px; margin: 18px 0 8px; }
+  .result-score-item { text-align: center; }
+  .result-score-item .rs-label { font-size: 13px; color: #7eb8d0; }
+  .result-score-item .rs-val { font-size: 48px; font-weight: 900; }
+  .result-score-item .rs-val.a { color: #ff6b6b; }
+  .result-score-item .rs-val.b { color: #4dffb8; }
+  .result-winner {
+    font-size: 20px; font-weight: 900; color: #ffd93d;
+    margin: 10px 0 18px; text-shadow: 0 0 20px rgba(255,217,61,0.5);
+  }
+
+  /* ========== 粒子 ========== */
+  .particle {
+    position: fixed; pointer-events: none; z-index: 99;
+    border-radius: 50%;
+    animation: particleFade 1s ease-out forwards;
+  }
+  @keyframes particleFade {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0) translateY(-30px); }
+  }
+</style>
+</head>
+<body>
+
+<!-- 开始遮罩 -->
+<div class="overlay" id="startOverlay">
+  <h2>🏔️ 福建山海情 🌊</h2>
+  <p>双人对战 · 贪吃蛇答题挑战赛<br>答对题目，蛇身增长，争夺山海之王！</p>
+  <div class="team-showcase">
+    <div class="ts-item">
+      <div class="ts-icon">🔥</div>
+      <div class="ts-name a">畲族凤凰纹 · 山海情</div>
+      <div style="font-size:11px;color:#aaa;margin-top:2px">红凤凰蛇 · WASD操控</div>
+    </div>
+    <div class="ts-vs">VS</div>
+    <div class="ts-item">
+      <div class="ts-icon">🌳</div>
+      <div class="ts-name b">蓝海绿山 · 生态福建</div>
+      <div style="font-size:11px;color:#aaa;margin-top:2px">绿树人蛇 · 方向键操控</div>
+    </div>
+  </div>
+  <button class="btn btn-start" onclick="startGame()">🐍 开始比赛 🐍</button>
+</div>
+
+<!-- 结束遮罩 -->
+<div class="overlay hidden" id="endOverlay">
+  <h2>🏆 比赛结束 🏆</h2>
+  <div class="result-scores">
+    <div class="result-score-item">
+      <div class="rs-label">🔥 畲族凤凰纹 · 山海情</div>
+      <div class="rs-val a" id="finalScoreA">0</div>
+      <div class="rs-label">分</div>
+    </div>
+    <div class="result-score-item">
+      <div class="rs-label">🌳 蓝海绿山 · 生态福建</div>
+      <div class="rs-val b" id="finalScoreB">0</div>
+      <div class="rs-label">分</div>
+    </div>
+  </div>
+  <div class="result-winner" id="winnerText"></div>
+  <button class="btn btn-restart" onclick="restartGame()">🔄 再来一局</button>
+</div>
+
+<!-- 头部 -->
+<div class="header">
+  <h1>🐍 福建山海情 · 双人对战贪吃蛇答题挑战 🐍</h1>
+  <div class="subtitle">畲族凤凰纹 · 山海情 VS 蓝海绿山 · 生态福建</div>
+</div>
+
+<!-- 比分 -->
+<div class="scoreboard">
+  <div class="score-card team-a">
+    <div class="team-emoji">🔥</div>
+    <div class="team-info">
+      <div class="team-name a">畲族凤凰纹 · 山海情</div>
+      <div class="score-label">每题 2 分 · 答对蛇身增长</div>
+    </div>
+    <div class="team-score a" id="scoreA">0</div>
+  </div>
+  <div class="score-card team-b">
+    <div class="team-emoji">🌳</div>
+    <div class="team-info">
+      <div class="team-name b">蓝海绿山 · 生态福建</div>
+      <div class="score-label">每题 2 分 · 答对蛇身增长</div>
+    </div>
+    <div class="team-score b" id="scoreB">0</div>
+  </div>
+</div>
+
+<!-- 主体 -->
+<div class="main-container">
+  <!-- 左侧题目 -->
+  <div class="question-panel">
+    <div class="question-box team-a" id="qBoxA">
+      <div class="q-header">
+        <span class="q-icon">🔥</span>
+        <span class="q-title a">畲族凤凰队</span>
+        <span class="q-num" id="qNumA">第 1 题</span>
+      </div>
+      <div class="q-text" id="qTextA">等待比赛开始…</div>
+      <div class="q-image-container" id="qImgContainerA" style="display:none;">
+        <img id="qImgA" src="" alt="题目配图">
+        <div class="q-image-caption">(福建省地理信息公共服务平台)</div>
+      </div>
+      <div class="q-options" id="qOptsA"></div>
+      <div class="q-status waiting" id="qStatusA">等待开始</div>
+    </div>
+  </div>
+
+  <!-- 游戏画布 -->
+  <div class="game-wrapper">
+    <canvas id="gameCanvas" width="560" height="660"></canvas>
+  </div>
+
+  <!-- 右侧题目 -->
+  <div class="question-panel">
+    <div class="question-box team-b" id="qBoxB">
+      <div class="q-header">
+        <span class="q-icon">🌳</span>
+        <span class="q-title b">蓝海绿山队</span>
+        <span class="q-num" id="qNumB">第 1 题</span>
+      </div>
+      <div class="q-text" id="qTextB">等待比赛开始…</div>
+      <div class="q-image-container" id="qImgContainerB" style="display:none;">
+        <img id="qImgB" src="" alt="题目配图">
+        <div class="q-image-caption">(福建省地理信息公共服务平台)</div>
+      </div>
+      <div class="q-options" id="qOptsB"></div>
+      <div class="q-status waiting" id="qStatusB">等待开始</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-info">
+  <span>🎮 题目来源：福建省罗源县地理知识</span>
+  <span>|</span>
+  <span>📖 初中地理作业设计 · 互动游戏版</span>
+  <span>|</span>
+  <span>🏆 答对 +2 分 · 蛇身增长一节</span>
+</div>
+
+<script>
+// ========== 题目数据 ==========
+const questions = [
+  {
+    text: "从热量带划分来看，福建省罗源县地处我国（    ）",
+    image: "https://hunyuan-plugin-1258344706.cos.ap-nanjing.myqcloud.com/pdf_youtu/img/c74431713eceb89ce9748fda560af2bb-image.png",
+    options: ["A. 热带", "B. 亚热带", "C. 暖温带", "D. 中温带"],
+    answer: 1
+  },
+  {
+    text: "罗源县依托其优越的自然条件，形成了多种农业部门。下列不属于该县主要农业部门的是（    ）",
+    image: "https://hunyuan-plugin-1258344706.cos.ap-nanjing.myqcloud.com/pdf_youtu/img/c74431713eceb89ce9748fda560af2bb-image.png",
+    options: ["A. 畜牧业", "B. 林业", "C. 种植业", "D. 渔业"],
+    answer: 0
+  },
+  {
+    text: "罗源县位于福建省东部沿海，关于该县的地理特征，下列说法正确的是（    ）",
+    image: "https://hunyuan-plugin-1258344706.cos.ap-nanjing.myqcloud.com/pdf_youtu/img/c74431713eceb89ce9748fda560af2bb-image.png",
+    options: [
+      "A. 雨季较短，晴热天气为主",
+      "B. 气候冷湿，多大风天气",
+      "C. 水资源短缺，矿产资源丰富",
+      "D. 地形以丘陵为主，海岸线曲折"
+    ],
+    answer: 3
+  },
+  {
+    text: "罗源县地处东南沿海，水热条件优越。下列关于该县农业生产特点的叙述，正确的是（    ）",
+    image: "https://hunyuan-plugin-1258344706.cos.ap-nanjing.myqcloud.com/pdf_youtu/img/c74431713eceb89ce9748fda560af2bb-image.png",
+    options: [
+      "A. 作物熟制为一年一熟",
+      "B. 粮食作物以小麦为主",
+      "C. 耕地以水田为主",
+      "D. 糖料作物以甜菜为主"
+    ],
+    answer: 2
+  },
+  {
+    text: "夏至日这一天，罗源县（约26°N）图书馆正午时刻的日影朝向与长度情况分别是（    ）",
+    image: "https://hunyuan-plugin-1258344706.cos.ap-nanjing.myqcloud.com/pdf_youtu/img/c74431713eceb89ce9748fda560af2bb-image.png",
+    options: [
+      "A. 朝正南，最长",
+      "B. 朝正北，最短",
+      "C. 朝正北，最长",
+      "D. 朝正南，最短"
+    ],
+    answer: 1
+  }
+];
+
+// ========== 游戏状态 ==========
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const CELL = 28;
+const COLS = Math.floor(canvas.width / CELL);
+const ROWS = Math.floor(canvas.height / CELL);
+
+let gameRunning = false;
+let animFrame = null;
+
+function createSnake(startX, startY, team) {
+  // 红队（A）朝右，蓝队（B）朝左，各自在独立轨道上平行运行
+  const initDir = team === 'A' ? {x: 1, y: 0} : {x: -1, y: 0};
+  return {
+    body: [{x: startX, y: startY}],
+    dir: initDir,
+    nextDir: initDir,
+    team: team,
+    growPending: 0,
+    alive: true,
+  };
+}
+
+let snakeA, snakeB;
+// 两条蛇分别在两条平行轨道上，避免相交
+// 蛇A（红队·凤凰）: 上方轨道，从左向右
+// 蛇B（蓝队·树人）: 下方轨道，从右向左
+const TRACK_A = Math.floor(ROWS * 0.3);  // 上方约 30% 处
+const TRACK_B = Math.floor(ROWS * 0.7);  // 下方约 70% 处
+const SPAWN_A = {x: 3, y: TRACK_A};
+const SPAWN_B = {x: COLS - 4, y: TRACK_B};
+
+let scoreA = 0, scoreB = 0;
+
+// ===== 题目状态 =====
+// currentQ: 当前题目索引 (0-based), 范围 0~4 对应第1~5题
+// answeredCount: 已作答的队伍数 (0, 1, or 2)
+// transitioning: 是否正在切换题目（防重入）
+let currentQ = 0;
+let answeredCount = 0;
+let transitioning = false;
+
+// ========== 福建主题背景 ==========
+function drawBackground() {
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, '#0b1d3a');
+  grad.addColorStop(0.4, '#0e2d50');
+  grad.addColorStop(0.7, '#0a3525');
+  grad.addColorStop(1, '#062a18');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 网格
+  ctx.strokeStyle = 'rgba(60,120,180,0.08)';
+  ctx.lineWidth = 0.5;
+  for (let c = 0; c <= COLS; c++) {
+    ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, canvas.height); ctx.stroke();
+  }
+  for (let r = 0; r <= ROWS; r++) {
+    ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(canvas.width, r * CELL); ctx.stroke();
+  }
+
+  drawMountainDecoration();
+  drawWaveDecoration();
+  drawShePatterns();
+  drawTracks();
+}
+
+function drawMountainDecoration() {
+  ctx.save(); ctx.globalAlpha = 0.06;
+  ctx.beginPath();
+  ctx.moveTo(0, canvas.height);
+  ctx.lineTo(60, canvas.height - 180); ctx.lineTo(130, canvas.height - 120);
+  ctx.lineTo(200, canvas.height - 200); ctx.lineTo(280, canvas.height - 140);
+  ctx.lineTo(340, canvas.height - 100); ctx.lineTo(400, canvas.height - 170);
+  ctx.lineTo(canvas.width, canvas.height - 80); ctx.lineTo(canvas.width, canvas.height);
+  ctx.closePath(); ctx.fillStyle = '#2d8a4e'; ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(canvas.width, canvas.height);
+  ctx.lineTo(canvas.width - 80, canvas.height - 160);
+  ctx.lineTo(canvas.width - 160, canvas.height - 220);
+  ctx.lineTo(canvas.width - 260, canvas.height - 140);
+  ctx.lineTo(canvas.width - 340, canvas.height - 190);
+  ctx.lineTo(canvas.width - 420, canvas.height - 110);
+  ctx.lineTo(0, canvas.height - 60); ctx.lineTo(0, canvas.height);
+  ctx.closePath(); ctx.fillStyle = '#1a6b3c'; ctx.fill();
+  ctx.restore();
+}
+
+function drawWaveDecoration() {
+  ctx.save(); ctx.globalAlpha = 0.04;
+  const t = Date.now() * 0.001;
+  for (let w = 0; w < 3; w++) {
+    ctx.beginPath();
+    for (let x = 0; x <= canvas.width; x += 4) {
+      const y = canvas.height - 30 + w * 12 + Math.sin(x * 0.02 + t + w * 1.5) * 8;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.lineTo(canvas.width, canvas.height); ctx.lineTo(0, canvas.height); ctx.closePath();
+    ctx.fillStyle = w % 2 === 0 ? '#2196F3' : '#4FC3F7'; ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawShePatterns() {
+  ctx.save(); ctx.globalAlpha = 0.07;
+  const t = Date.now() * 0.0005;
+  for (let i = 0; i < 6; i++) {
+    const cx = canvas.width * (0.15 + i * 0.15);
+    const cy = 40 + Math.sin(t + i * 0.8) * 8;
+    ctx.beginPath(); ctx.arc(cx, cy, 12 + i * 3, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy);
+    ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6);
+    ctx.strokeStyle = '#ffd93d'; ctx.lineWidth = 1; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// 绘制两条平行轨道线，让蛇的运行轨迹更清晰
+function drawTracks() {
+  ctx.save();
+  // 上方轨道（红队）
+  const yA = TRACK_A * CELL + CELL / 2;
+  ctx.strokeStyle = 'rgba(255,80,80,0.12)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath(); ctx.moveTo(0, yA); ctx.lineTo(canvas.width, yA); ctx.stroke();
+  // 轨道标签
+  ctx.globalAlpha = 0.25;
+  ctx.font = '11px "Noto Sans SC", sans-serif';
+  ctx.fillStyle = '#ff6b6b';
+  ctx.fillText('🔥 凤凰队轨道', 8, yA - 6);
+
+  // 下方轨道（蓝队）
+  const yB = TRACK_B * CELL + CELL / 2;
+  ctx.strokeStyle = 'rgba(77,255,184,0.12)';
+  ctx.beginPath(); ctx.moveTo(0, yB); ctx.lineTo(canvas.width, yB); ctx.stroke();
+  ctx.globalAlpha = 0.25;
+  ctx.fillStyle = '#4dffb8';
+  ctx.fillText('🌳 蓝山队轨道', 8, yB + 16);
+
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// ========== 蛇绘制 ==========
+function drawSnake(snake) {
+  const isA = snake.team === 'A';
+  const body = snake.body;
+  const len = body.length;
+
+  for (let i = len - 1; i >= 0; i--) {
+    const seg = body[i];
+    const cx = seg.x * CELL + CELL / 2;
+    const cy = seg.y * CELL + CELL / 2;
+    const r = CELL / 2 - 2;
+
+    ctx.save();
+
+    if (isA) {
+      if (i === 0) {
+        drawPhoenixHead(cx, cy, snake.dir, r);
+      } else {
+        const t = i / Math.max(len - 1, 1);
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        if (t < 0.3) { grad.addColorStop(0, '#ff6b6b'); grad.addColorStop(1, '#cc3333'); }
+        else if (t < 0.7) { grad.addColorStop(0, '#ff8e53'); grad.addColorStop(1, '#cc5522'); }
+        else { grad.addColorStop(0, '#ffd93d'); grad.addColorStop(1, '#cc9900'); }
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.3; ctx.strokeStyle = '#ffd93d'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.55, 0, Math.PI * 2); ctx.stroke();
+      }
+    } else {
+      if (i === 0) {
+        drawTreeHead(cx, cy, snake.dir, r);
+      } else {
+        const t = i / Math.max(len - 1, 1);
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        if (t < 0.3) { grad.addColorStop(0, '#4dffb8'); grad.addColorStop(1, '#00a86b'); }
+        else if (t < 0.7) { grad.addColorStop(0, '#2ecc71'); grad.addColorStop(1, '#1a8c4e'); }
+        else { grad.addColorStop(0, '#81c784'); grad.addColorStop(1, '#4a8c5c'); }
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.2; ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.6;
+        ctx.beginPath(); ctx.arc(cx, cy, r * 0.4, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+
+    // 节间连接
+    if (i > 0) {
+      const prev = body[i - 1];
+      const mx = (seg.x + prev.x) * CELL / 2 + CELL / 2;
+      const my = (seg.y + prev.y) * CELL / 2 + CELL / 2;
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = isA ? '#ff6644' : '#2ecc71';
+      ctx.beginPath(); ctx.arc(mx, my, r * 0.6, 0, Math.PI * 2); ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
+function drawPhoenixHead(cx, cy, dir, r) {
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.8);
+  glow.addColorStop(0, 'rgba(255,100,50,0.35)'); glow.addColorStop(1, 'rgba(255,50,0,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(cx, cy, r * 1.8, 0, Math.PI * 2); ctx.fill();
+
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grad.addColorStop(0, '#ff4444'); grad.addColorStop(0.6, '#cc0000'); grad.addColorStop(1, '#880000');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+  ctx.fillStyle = '#ffd93d';
+  const angle = Math.atan2(dir.y, dir.x);
+  for (let f = 0; f < 3; f++) {
+    const fa = angle + (f - 1) * 0.35;
+    ctx.beginPath(); ctx.arc(cx + Math.cos(fa) * r * 1.2, cy + Math.sin(fa) * r * 1.2, 3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  const eyeDist = r * 0.35;
+  const eyeAngle = angle - 0.3;
+  const elx = cx + Math.cos(eyeAngle) * eyeDist;
+  const ely = cy + Math.sin(eyeAngle) * eyeDist;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(elx, ely, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(elx + Math.cos(angle)*1.2, ely + Math.sin(angle)*1.2, 1.5, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawTreeHead(cx, cy, dir, r) {
+  const angle = Math.atan2(dir.y, dir.x);
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.8);
+  glow.addColorStop(0, 'rgba(46,204,113,0.3)'); glow.addColorStop(1, 'rgba(0,150,80,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(cx, cy, r * 1.8, 0, Math.PI * 2); ctx.fill();
+
+  const crownDist = r * 1.1;
+  const offsets = [-0.25, 0, 0.25];
+  offsets.forEach((off, idx) => {
+    const ca = angle + off;
+    const px = cx + Math.cos(ca) * crownDist;
+    const py = cy + Math.sin(ca) * crownDist;
+    const cGrad = ctx.createRadialGradient(px, py, 0, px, py, r * 0.9);
+    cGrad.addColorStop(0, idx === 1 ? '#4dffb8' : '#2ecc71');
+    cGrad.addColorStop(1, '#1a8c4e');
+    ctx.fillStyle = cGrad;
+    ctx.beginPath(); ctx.arc(px, py, r * 0.85, 0, Math.PI * 2); ctx.fill();
+  });
+
+  ctx.fillStyle = '#5D4037';
+  ctx.fillRect(cx - 3, cy - 2, 6, 5);
+
+  const eyeAngle = angle + Math.PI * 0.15;
+  const elx = cx + Math.cos(eyeAngle) * r * 0.5;
+  const ely = cy + Math.sin(eyeAngle) * r * 0.5;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(elx, ely, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.arc(elx + Math.cos(angle)*1, ely + Math.sin(angle)*1, 1.3, 0, Math.PI * 2); ctx.fill();
+}
+
+// ========== 蛇移动 ==========
+function moveSnake(snake) {
+  if (!snake.alive) return;
+  snake.dir = {...snake.nextDir};
+
+  const head = snake.body[0];
+  const newHead = { x: head.x + snake.dir.x, y: head.y + snake.dir.y };
+
+  // 穿墙
+  if (newHead.x < 0) newHead.x = COLS - 1;
+  if (newHead.x >= COLS) newHead.x = 0;
+  if (newHead.y < 0) newHead.y = ROWS - 1;
+  if (newHead.y >= ROWS) newHead.y = 0;
+
+  // 自身碰撞检测（允许穿过自己，答题模式下蛇永不会死）
+  let selfCollision = false;
+  for (const seg of snake.body) {
+    if (seg.x === newHead.x && seg.y === newHead.y) { selfCollision = true; break; }
+  }
+  // 如果自身碰撞，允许穿过（不死亡）
+  // 正常添加新头并移除尾部，蛇可以穿过自己的身体
+  snake.body.unshift(newHead);
+  if (snake.growPending > 0) { snake.growPending--; } else { snake.body.pop(); }
+}
+
+function checkSnakeCollision() {
+  // 答题模式下，蛇不会因碰撞死亡——让它们互相穿过
+  // 这样玩家可以专注答题，不会被蛇的碰撞打断比赛
+  return;
+}
+
+// ========== 游戏循环 ==========
+let lastTick = 0;
+const TICK_MS = 180;
+
+function gameLoop(timestamp) {
+  if (!gameRunning) return;
+  animFrame = requestAnimationFrame(gameLoop);
+
+  if (timestamp - lastTick >= TICK_MS) {
+    lastTick = timestamp;
+    moveSnake(snakeA);
+    moveSnake(snakeB);
+    checkSnakeCollision();
+  }
+
+  drawBackground();
+  drawSnake(snakeA);
+  drawSnake(snakeB);
+
+  if (!snakeA.alive || !snakeB.alive) { endGame(); }
+}
+
+// ========== 题目系统（简化稳定版） ==========
+
+/**
+ * 加载题目到指定队伍面板
+ * @param {string} team - 'A' or 'B'
+ */
+function loadQuestion(team) {
+  const isA = team === 'A';
+
+  const qText   = document.getElementById(isA ? 'qTextA'   : 'qTextB');
+  const qOpts   = document.getElementById(isA ? 'qOptsA'   : 'qOptsB');
+  const qStatus = document.getElementById(isA ? 'qStatusA'  : 'qStatusB');
+  const qNum    = document.getElementById(isA ? 'qNumA'    : 'qNumB');
+  const qImgC   = document.getElementById(isA ? 'qImgContainerA' : 'qImgContainerB');
+  const qImg    = document.getElementById(isA ? 'qImgA'    : 'qImgB');
+
+  // 所有题目已完成
+  if (currentQ >= questions.length) {
+    qText.className = 'q-text-final';
+    qText.textContent = '🎉 所有题目已完成！';
+    qOpts.innerHTML = '';
+    qStatus.textContent = '比赛即将结束';
+    qStatus.className = 'q-status final-msg';
+    qImgC.style.display = 'none';
+    return;
+  }
+
+  // 设置题目内容
+  const q = questions[currentQ];
+  qText.className = 'q-text';
+  qText.textContent = (currentQ + 1) + '. ' + q.text;
+  qNum.textContent = '第 ' + (currentQ + 1) + ' / ' + questions.length + ' 题';
+
+  // 图片
+  if (q.image) {
+    qImgC.style.display = 'block';
+    qImg.src = q.image;
+    qImg.onerror = function() { qImgC.style.display = 'none'; };
+  } else {
+    qImgC.style.display = 'none';
+  }
+
+  // 生成选项 — 使用直接绑定的事件，不依赖闭包中的 team 变量
+  qOpts.innerHTML = '';
+  for (let i = 0; i < q.options.length; i++) {
+    const div = document.createElement('div');
+    div.className = 'q-opt';
+    div.textContent = q.options[i];
+    // 用 dataset 存索引，避免闭包问题
+    div.dataset.idx = i;
+    div.dataset.team = team;
+    div.addEventListener('click', onOptionClick);
+    qOpts.appendChild(div);
+  }
+
+  qStatus.textContent = '请选择答案…';
+  qStatus.className = 'q-status waiting';
+}
+
+/**
+ * 选项点击统一处理
+ */
+function onOptionClick(e) {
+  if (transitioning) return;
+
+  const el = e.currentTarget;
+  const team = el.dataset.team;   // 'A' or 'B'
+  const idx = parseInt(el.dataset.idx);
+
+  // 防止重复点击：立刻移除所有同面板的事件监听
+  const isA = team === 'A';
+  const qOpts = document.getElementById(isA ? 'qOptsA' : 'qOptsB');
+  const allOpts = qOpts.querySelectorAll('.q-opt');
+  for (let i = 0; i < allOpts.length; i++) {
+    allOpts[i].removeEventListener('click', onOptionClick);
+    allOpts[i].classList.add('disabled');
+  }
+
+  handleAnswer(team, idx, el);
+}
+
+/**
+ * 处理作答
+ */
+function handleAnswer(team, chosenIdx, el) {
+  const isA = team === 'A';
+  if (currentQ >= questions.length) return;
+
+  const q = questions[currentQ];
+  const qStatus = document.getElementById(isA ? 'qStatusA' : 'qStatusB');
+  const qOpts = document.getElementById(isA ? 'qOptsA' : 'qOptsB');
+  const opts = qOpts.querySelectorAll('.q-opt');
+
+  if (chosenIdx === q.answer) {
+    // 正确
+    el.classList.add('correct');
+    qStatus.textContent = '✅ 回答正确！+2 分';
+    qStatus.className = 'q-status correct-msg';
+
+    if (isA) {
+      scoreA += 2;
+      snakeA.growPending += 3;
+      document.getElementById('scoreA').textContent = scoreA;
+      spawnParticles(el, '#ff6b6b');
+    } else {
+      scoreB += 2;
+      snakeB.growPending += 3;
+      document.getElementById('scoreB').textContent = scoreB;
+      spawnParticles(el, '#4dffb8');
+    }
+  } else {
+    // 错误
+    el.classList.add('wrong');
+    opts[q.answer].classList.add('correct');
+    qStatus.textContent = '❌ 答错了，正确答案：' + q.options[q.answer];
+    qStatus.className = 'q-status wrong-msg';
+  }
+
+  // 计数 +1
+  answeredCount++;
+
+  // 如果双方都答完，推进到下一题
+  if (answeredCount >= 2) {
+    advanceToNextQuestion();
+  }
+}
+
+/**
+ * 推进到下一题 —— 单一出口，确保 currentQ 只增加一次
+ */
+function advanceToNextQuestion() {
+  if (transitioning) return;
+  transitioning = true;
+
+  // 短暂延迟让玩家看到结果
+  setTimeout(function() {
+    currentQ++;      // 移动到下一题
+    answeredCount = 0; // 重置答题计数
+
+    if (currentQ >= questions.length) {
+      // 所有题目已做完，加载完成态
+      loadQuestion('A');
+      loadQuestion('B');
+      transitioning = false;
+      // 不再自动结束比赛，等蛇碰撞或用户查看结果
+      // 3秒后自动显示结束画面
+      setTimeout(function() {
+        if (gameRunning) endGame();
+      }, 3000);
+    } else {
+      // 加载下一题
+      loadQuestion('A');
+      loadQuestion('B');
+      transitioning = false;
+    }
+  }, 1500);
+}
+
+// 粒子效果
+function spawnParticles(el, color) {
+  const rect = el.getBoundingClientRect();
+  for (let i = 0; i < 10; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.width = p.style.height = (4 + Math.random() * 6) + 'px';
+    p.style.background = color;
+    p.style.left = (rect.left + rect.width / 2 + (Math.random() - 0.5) * 40) + 'px';
+    p.style.top  = (rect.top + rect.height / 2 + (Math.random() - 0.5) * 20) + 'px';
+    document.body.appendChild(p);
+    setTimeout(function() { p.remove(); }, 1000);
+  }
+}
+
+// ========== 键盘控制 ==========
+const keyMap = {
+  'w': {x: 0, y: -1}, 'a': {x: -1, y: 0},
+  's': {x: 0, y: 1},  'd': {x: 1, y: 0},
+  'W': {x: 0, y: -1}, 'A': {x: -1, y: 0},
+  'S': {x: 0, y: 1},  'D': {x: 1, y: 0},
+  'ArrowUp':    {x: 0, y: -1},
+  'ArrowLeft':  {x: -1, y: 0},
+  'ArrowDown':  {x: 0, y: 1},
+  'ArrowRight': {x: 1, y: 0},
+};
+
+const isAKey = {'w':1,'a':1,'s':1,'d':1,'W':1,'A':1,'S':1,'D':1};
+const isBKey = {'ArrowUp':1,'ArrowDown':1,'ArrowLeft':1,'ArrowRight':1};
+
+document.addEventListener('keydown', function(e) {
+  if (!gameRunning) return;
+  const dir = keyMap[e.key];
+  if (!dir) return;
+  e.preventDefault();
+
+  if (isAKey[e.key]) {
+    if (snakeA.dir.x + dir.x !== 0 || snakeA.dir.y + dir.y !== 0) {
+      snakeA.nextDir = dir;
+    }
+  }
+  if (isBKey[e.key]) {
+    if (snakeB.dir.x + dir.x !== 0 || snakeB.dir.y + dir.y !== 0) {
+      snakeB.nextDir = dir;
+    }
+  }
+});
+
+// ========== 游戏控制 ==========
+function startGame() {
+  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('endOverlay').classList.add('hidden');
+
+  // 重置所有状态
+  scoreA = 0; scoreB = 0;
+  currentQ = 0;
+  answeredCount = 0;
+  transitioning = false;
+
+  document.getElementById('scoreA').textContent = '0';
+  document.getElementById('scoreB').textContent = '0';
+
+  snakeA = createSnake(SPAWN_A.x, SPAWN_A.y, 'A');
+  snakeB = createSnake(SPAWN_B.x, SPAWN_B.y, 'B');
+
+  gameRunning = true;
+  lastTick = 0;
+
+  // 加载第一题
+  loadQuestion('A');
+  loadQuestion('B');
+
+  animFrame = requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+  gameRunning = false;
+  if (animFrame) cancelAnimationFrame(animFrame);
+
+  setTimeout(function() {
+    document.getElementById('finalScoreA').textContent = scoreA;
+    document.getElementById('finalScoreB').textContent = scoreB;
+    var wt = document.getElementById('winnerText');
+    if (scoreA > scoreB) {
+      wt.textContent = '🔥 畲族凤凰纹 · 山海情 队获胜！';
+    } else if (scoreB > scoreA) {
+      wt.textContent = '🌳 蓝海绿山 · 生态福建 队获胜！';
+    } else {
+      wt.textContent = '🤝 平局！两队实力相当！';
+    }
+    document.getElementById('endOverlay').classList.remove('hidden');
+  }, 800);
+}
+
+function restartGame() {
+  document.getElementById('endOverlay').classList.add('hidden');
+  startGame();
+}
+</script>
+</body>
+</html>
